@@ -1,0 +1,60 @@
+diff --git a/projects/Makefile b/projects/Makefile
+index 7ac7a1b..6025af4 100644
+--- a/projects/Makefile
++++ b/projects/Makefile
+@@ -107,6 +107,7 @@ BEAGLEBOARDDIRS := $(LINUXDIRS) $(DUMMYMIDIDIRS) $(RTAUDIODIRS) $(SDLDIRS)
+ DEBDIRS := $(DBDIRS) $(JACKDIRS) $(RTAUDIODIRS) $(RTMIDIDIRS) $(SDLDIRS)
+ RASPIDIRS := $(DBDIRS) $(JACKDIRS) $(RTAUDIODIRS) $(RTMIDIDIRS) $(SDLDIRS)
+ RG35XXPLUSDIRS := $(LINUXDIRS) $(DUMMYMIDIDIRS) $(SDL2DIRS) $(SDL2AUDIODIRS)
++PORTMASTERDIRS := $(LINUXDIRS) $(DUMMYMIDIDIRS) $(SDL2DIRS) $(SDL2AUDIODIRS)
+ STEAMDIRS := $(LINUXDIRS) $(JACKDIRS) $(RTAUDIODIRS) $(RTMIDIDIRS) $(SDLDIRS)
+ X64DIRS := $(LINUXDIRS) $(RTMIDIDIRS) $(SDL2DIRS) $(SDL2AUDIODIRS)
+ X86DIRS := $(LINUXDIRS) $(RTMIDIDIRS) $(SDL2DIRS) $(SDL2AUDIODIRS)
+@@ -326,6 +327,7 @@ DEBFILES := $(DBFILES) $(RTAUDIOFILES) $(RTMIDIFILES) $(JACKFILES)
+ BEAGLEBOARDFILES := $(LINUXFILES) $(DUMMYMIDIFILES)
+ RASPIFILES := $(DBDIRS) $(RTAUDIOFILES) $(RTMIDIFILES) $(JACKFILES)
+ RG35XXPLUSFILES := $(LINUXFILES) $(SDLAUDIOFILES) $(DUMMYMIDIFILES)
++PORTMASTERFILES := $(LINUXFILES) $(SDLAUDIOFILES) $(DUMMYMIDIFILES)
+ STEAMFILES := $(LINUXFILES) $(RTAUDIOFILES) $(RTMIDIFILES) $(JACKFILES)
+ X64FILES := $(LINUXFILES) $(RTMIDIFILES) $(SDLAUDIOFILES)
+ X86FILES := $(LINUXFILES) $(RTMIDIFILES) $(SDLAUDIOFILES)
+diff --git a/projects/Makefile.PORTMASTER b/projects/Makefile.PORTMASTER
+new file mode 100644
+index 0000000..66b2131
+--- /dev/null
++++ b/projects/Makefile.PORTMASTER
+@@ -0,0 +1,34 @@
++-include $(PWD)/rules_base
++
++# config
++DEFINES := \
++	-DPLATFORM_$(PLATFORM) \
++	-D_64BIT \
++	-DBUFFERED \
++	-DCPP_MEMORY \
++	-DHAVE_STDINT_H \
++	-D_NDEBUG \
++	-D_NO_JACK_ \
++	-DSDL2 \
++        -DSDLAUDIO \
++        -DDUMMYMIDI
++
++CROSS_COMPILE:=/usr/bin/aarch64-linux-gnu-
++CC = $(CROSS_COMPILE)gcc
++CXX = $(CROSS_COMPILE)g++
++TOOLPATH=/usr/bin
++
++SYSROOT     := $(shell $(CROSS_COMPILE)gcc --print-sysroot)
++SDL_CFLAGS  := $(shell $(SYSROOT)/usr/bin/sdl2-config --cflags)
++SDL_LIBS    := $(shell $(SYSROOT)/usr/bin/sdl2-config --libs)
++
++OPT_FLAGS = -O3 -mlittle-endian -mabi=lp64 -march=armv8-a+crypto+crc -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -dumpbase
++INCLUDES = -Iinclude $(SDL_CFLAGS) -I/usr/include/ -I/usr/include/aarch64-linux-gnu/ -I/usr/include/aarch64-linux-gnu/c++/9/ -I$(PWD)/../sources
++CFLAGS	:= $(DEFINES) $(INCLUDES) $(OPT_FLAGS) -Wall  
++CXXFLAGS:= $(CFLAGS) -std=gnu++03 
++LIBS	:= $(SDL_LIBS) -lSDL2 -lSDL2_mixer -lpthread
++OUTPUT = ../lgpt-port
++EXTENSION:= elf
++
++%.elf: $(OFILES)
++	$(CXX) $(LDFLAGS) -o $@ $(OFILES) $(LIBS)
