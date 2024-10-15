@@ -112,7 +112,7 @@ WavFile *WavFile::Open(const char *path) {
 	chunk = Swap32(chunk);
 
 	if (chunk!=0x45564157) {
-		Trace::Error("Bad WAV format") ;
+		Trace::Error("Bad WAV format: %d", chunk) ;
 		delete wav ;
 		return 0 ;
 	}
@@ -122,13 +122,14 @@ WavFile *WavFile::Open(const char *path) {
 	position+=wav->readBlock(position,4) ;
 	memcpy(&chunk,wav->readBuffer_,4) ;
 	chunk = Swap32(chunk);
-		
+
+    #ifdef PARANOIDWAVFMTVALIDATION
 	if (chunk!=0x20746D66) {
-		Trace::Error("Bad WAV/fmt format") ;
+		Trace::Error("Bad WAV/fmt format: %02x", chunk) ;
 		delete wav ;
 		return 0 ;
 	}
-
+    #endif
 	// Read subchunk size
 
 	position+=wav->readBlock(position,4) ;
@@ -149,11 +150,13 @@ WavFile *WavFile::Open(const char *path) {
 	memcpy(&comp,wav->readBuffer_,2) ;
 	comp = Swap16(comp);
 
+    #ifdef PARANOIDWAVFMTVALIDATION
 	if (comp!=1) {
-		Trace::Error("Unsupported compression") ;
+		Trace::Error("Unsupported compression: %d", comp) ;
 		delete wav ;
 		return 0 ;
 	}
+    #endif
 
 	// Read NumChannels (mono/Stereo)
 
@@ -161,6 +164,9 @@ WavFile *WavFile::Open(const char *path) {
 	position+=wav->readBlock(position,2) ;
 	memcpy(&nChannels,wav->readBuffer_,2) ;
 	nChannels = Swap16(nChannels);
+    if (nChannels == 0) {
+        nChannels=2 ;
+    }
 
 	// Read Sample rate 
 
@@ -169,6 +175,11 @@ WavFile *WavFile::Open(const char *path) {
 	position+=wav->readBlock(position,4) ;
 	memcpy(&sampleRate,wav->readBuffer_,4) ;
 	sampleRate = Swap32(sampleRate);
+    #ifndef PARANOIDWAVFMTVALIDATION
+    if (sampleRate == 0) {
+        sampleRate=44100;
+    }
+    #endif
 
 	// Skip byteRate & blockalign
 
@@ -178,12 +189,19 @@ WavFile *WavFile::Open(const char *path) {
 	position+=wav->readBlock(position,2) ;
 	memcpy(&bitPerSample,wav->readBuffer_,2) ;
 	bitPerSample = Swap16(bitPerSample);
-		
+
+    #ifdef PARANOIDWAVFMTVALIDATION
 	if ((bitPerSample!=16)&&(bitPerSample!=8)) {
-		Trace::Error("Only 8/16 bit supported") ;
+		Trace::Error("Only 8/16 bit supported: %d") ;
 		delete wav ;
 		return 0 ;
 	} ;
+    #else
+    if (bitPerSample == 0) {
+        bitPerSample=16 ;
+    }
+    #endif
+
 	bitPerSample/=8 ;
 	wav->bytePerSample_=bitPerSample ;
 
