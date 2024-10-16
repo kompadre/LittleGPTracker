@@ -128,10 +128,16 @@ WavFile *WavFile::Open(const char *path) {
 	#ifndef NOSKIPJUNK
 	if (chunk==0x4b4e554a) {
 		position+=wav->readBlock(position,4) ;
-        memcpy(&size, wav->readBuffer_,4) ;
-        size = Swap32(size) ;
-        // Trace::Debug("WavFile::Open(): skipping JUNK with size=%d", size);
-        position+=size;
+        memcpy(&chunk, wav->readBuffer_,4) ;
+        chunk = Swap32(chunk) ;
+        // Avoid out-of-bounds read
+        if (chunk > size-position) {
+            Trace::Error("Bad WAV format: wrong JUNK size") ;
+            delete wav ;
+			return 0 ;
+		}
+        // Trace::Debug("WavFile::Open(): skipping JUNK with size=%d", chunk);
+        position+=wav->readBlock(position,chunk) ;
 	   	position+=wav->readBlock(position,4) ;
 		memcpy(&chunk,wav->readBuffer_,4) ;
 		chunk = Swap32(chunk);
